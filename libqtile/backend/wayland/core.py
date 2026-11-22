@@ -807,7 +807,7 @@ class Core(base.Core):
 
     @expose_command
     def set_cursor_shape(self, shape: str) -> None:
-        """Set a somewhat persistent cursor shape override."""
+        """Set a very persistent cursor shape override."""
         if not isinstance(shape, str) or not shape:
             raise ValueError("Cursor shape must be a non-empty string")
 

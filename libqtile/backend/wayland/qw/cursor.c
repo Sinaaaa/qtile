@@ -21,13 +21,12 @@ void qw_cursor_reset_shape(struct qw_cursor *cursor) {
     free((void *)cursor->temp_cursor_shape_override_name);
     cursor->temp_cursor_shape_override_name = NULL;
 
-    if (cursor->saved_surface) {
-        wlr_cursor_set_surface(cursor->cursor, cursor->saved_surface, cursor->saved_hotspot_x,
-                               cursor->saved_hotspot_y);
-    } else {
-        wlr_cursor_set_xcursor(cursor->cursor, cursor->mgr,
-                               cursor->current_shape_name ? cursor->current_shape_name : "default");
+    if (cursor->hidden) {
+        return;
     }
+
+    wlr_cursor_set_xcursor(cursor->cursor, cursor->mgr,
+                           cursor->current_shape_name ? cursor->current_shape_name : "default");
 }
 
 void qw_cursor_destroy(struct qw_cursor *cursor) {
