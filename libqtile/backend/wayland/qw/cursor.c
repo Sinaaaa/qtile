@@ -25,7 +25,7 @@ void qw_cursor_reset_shape(struct qw_cursor *cursor) {
         return;
     }
 
-    if (cursor->saved_surface) {
+    if (cursor->saved_surface_requested) {
         wlr_cursor_set_surface(cursor->cursor, cursor->saved_surface, cursor->saved_hotspot_x,
                                cursor->saved_hotspot_y);
     } else {
@@ -40,6 +40,8 @@ static void qw_cursor_handle_saved_surface_destroy(struct wl_listener *listener,
     struct qw_cursor *cursor = wl_container_of(listener, cursor, saved_surface_destroy);
 
     cursor->saved_surface = NULL;
+    cursor->saved_surface_requested = false;
+
     wl_list_remove(&cursor->saved_surface_destroy.link);
 }
 
@@ -298,6 +300,7 @@ static void qw_cursor_handle_seat_request_set(struct wl_listener *listener, void
     cursor->saved_surface = event->surface;
     cursor->saved_hotspot_x = event->hotspot_x;
     cursor->saved_hotspot_y = event->hotspot_y;
+    cursor->saved_surface_requested = true;
     cursor->current_shape_name = NULL;
 
     // Track the new surface's lifetime
@@ -870,7 +873,9 @@ static void qw_handle_request_set_cursor_shape(struct wl_listener *listener, voi
         cursor->saved_surface = NULL;
     }
 
-    if (!cursor->temp_cursor_shape_override_name) {
+    cursor->saved_surface_requested = false;
+
+    if (!cursor->temp_cursor_shape_override_name && !cursor->hidden) {
         wlr_cursor_set_xcursor(cursor->cursor, cursor->mgr, name);
     }
 }
