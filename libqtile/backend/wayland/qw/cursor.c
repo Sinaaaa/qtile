@@ -25,11 +25,31 @@ void qw_cursor_reset_shape(struct qw_cursor *cursor) {
         return;
     }
 
-    wlr_cursor_set_xcursor(cursor->cursor, cursor->mgr,
-                           cursor->current_shape_name ? cursor->current_shape_name : "default");
+    if (cursor->saved_surface) {
+        wlr_cursor_set_surface(cursor->cursor, cursor->saved_surface, cursor->saved_hotspot_x,
+                               cursor->saved_hotspot_y);
+    } else {
+        wlr_cursor_set_xcursor(cursor->cursor, cursor->mgr,
+                               cursor->current_shape_name ? cursor->current_shape_name : "default");
+    }
+}
+
+static void qw_cursor_handle_saved_surface_destroy(struct wl_listener *listener, void *data) {
+    UNUSED(data);
+
+    struct qw_cursor *cursor = wl_container_of(listener, cursor, saved_surface_destroy);
+
+    cursor->saved_surface = NULL;
+    wl_list_remove(&cursor->saved_surface_destroy.link);
 }
 
 void qw_cursor_destroy(struct qw_cursor *cursor) {
+    // Detach the saved surface destruction listener if still attached.
+    if (cursor->saved_surface) {
+        wl_list_remove(&cursor->saved_surface_destroy.link);
+        cursor->saved_surface = NULL;
+    }
+
     wl_list_remove(&cursor->request_set.link);
     wl_list_remove(&cursor->axis.link);
     wl_list_remove(&cursor->motion.link);
@@ -269,10 +289,22 @@ static void qw_cursor_handle_seat_request_set(struct wl_listener *listener, void
         return;
     }
 
-    // Save the requested surface and hotspot info
+    // Detach the listener from the previously saved surface
+    if (cursor->saved_surface) {
+        wl_list_remove(&cursor->saved_surface_destroy.link);
+    }
+
+    // Save the newly requested surface and hotspot info
     cursor->saved_surface = event->surface;
     cursor->saved_hotspot_x = event->hotspot_x;
     cursor->saved_hotspot_y = event->hotspot_y;
+    cursor->current_shape_name = NULL;
+
+    // Track the new surface's lifetime
+    if (event->surface) {
+        cursor->saved_surface_destroy.notify = qw_cursor_handle_saved_surface_destroy;
+        wl_signal_add(&event->surface->events.destroy, &cursor->saved_surface_destroy);
+    }
 
     if (cursor->temp_cursor_shape_override_name) {
         return;
@@ -832,6 +864,11 @@ static void qw_handle_request_set_cursor_shape(struct wl_listener *listener, voi
 
     const char *name = wlr_cursor_shape_v1_name(event->shape);
     cursor->current_shape_name = name;
+
+    if (cursor->saved_surface) {
+        wl_list_remove(&cursor->saved_surface_destroy.link);
+        cursor->saved_surface = NULL;
+    }
 
     if (!cursor->temp_cursor_shape_override_name) {
         wlr_cursor_set_xcursor(cursor->cursor, cursor->mgr, name);

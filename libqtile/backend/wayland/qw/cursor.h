@@ -33,6 +33,7 @@ struct qw_cursor {
     struct wl_listener button;
     struct wl_listener constraint_commit;
     struct wl_listener request_set_cursor_shape;
+    struct wl_listener saved_surface_destroy;
     struct wlr_xcursor_manager *mgr;
     struct wlr_xcursor_manager *xwayland_mgr;
     struct wlr_surface *saved_surface;
